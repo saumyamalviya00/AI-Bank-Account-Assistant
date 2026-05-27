@@ -11,9 +11,10 @@ export default function App() {
   const [messages, setMessages] = useState([
     {
       sender: "ai",
-      text: "Namaste Rahul 👋 I’m your AI Voice Banking Assistant.",
+      text: "Namaste 👋 I’m your AI Voice Banking Assistant.",
     },
   ]);
+  const [isRecording, setIsRecording] = useState(false);
 
   // FETCH BALANCE
   useEffect(() => {
@@ -90,6 +91,94 @@ export default function App() {
     setQuery("");
 
   }
+
+  async function startRecording() {
+
+  try {
+
+    // Ask microphone permission
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true,
+    });
+
+    setIsRecording(true);
+
+    const mediaRecorder = new MediaRecorder(stream);
+
+    const audioChunks = [];
+
+    mediaRecorder.ondataavailable = (event) => {
+      audioChunks.push(event.data);
+    };
+
+    mediaRecorder.onstop = async () => {
+
+      const audioBlob = new Blob(audioChunks, {
+        type: "audio/webm",
+      });
+
+      const formData = new FormData();
+
+      formData.append("file", audioBlob, "voice.webm");
+
+      try {
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/voice",
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
+
+        const data = await response.json();
+
+        console.log(data);
+
+        // USER MESSAGE
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "user",
+            text: data.transcript,
+          },
+        ]);
+
+        // AI RESPONSE
+        setMessages((prev) => [
+          ...prev,
+          {
+            sender: "ai",
+            text: data.response,
+          },
+        ]);
+
+      } catch (error) {
+
+        console.log(error);
+
+      }
+
+      setIsRecording(false);
+
+    };
+
+    mediaRecorder.start();
+
+    // STOP AFTER 5 SECONDS
+    setTimeout(() => {
+
+      mediaRecorder.stop();
+
+    }, 5000);
+
+  } catch (error) {
+
+    console.log(error);
+
+  }
+
+}
 
   // SUGGESTIONS
   const suggestions = [
@@ -238,7 +327,13 @@ export default function App() {
         <div className="border-t border-gray-700 p-5 flex items-center gap-5">
 
           {/* MIC BUTTON */}
-          <button className="w-20 h-20 rounded-3xl bg-[#2a2a2a] border border-gray-700 text-2xl hover:bg-[#3a3a3a] transition-all">
+          <button onClick={startRecording}
+          className={`w-20 h-20 rounded-3xl border border-gray-700 text-2xl transition-all ${
+            isRecording
+              ? "bg-red-500 animate-pulse"
+              : "bg-[#2a2a2a] hover:bg-[#3a3a3a]"
+            }`}
+          >
             🎙️
           </button>
 

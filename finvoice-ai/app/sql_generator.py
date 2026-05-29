@@ -1,6 +1,12 @@
-from langchain_community.llms import Ollama
+from groq import Groq
+from dotenv import load_dotenv
+import os
 
-llm = Ollama(model="qwen2.5:0.5b")
+load_dotenv()
+
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
 
 def generate_sql(intent_json):
 
@@ -64,6 +70,20 @@ Intent:
 SQL:
 """
 
-    response = llm.invoke(prompt)
+    response = client.chat.completions.create(
 
-    return response.strip()
+        model="llama-3.1-8b-instant",
+
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+
+        temperature=0
+    )
+
+    sql_query = response.choices[0].message.content
+
+    return sql_query.strip()

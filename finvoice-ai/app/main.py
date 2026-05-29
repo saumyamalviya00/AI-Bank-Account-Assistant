@@ -1,25 +1,35 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from app.intent_parser import parse_intent
-from app.process_query import process_query
 from pydantic import BaseModel
-from fastapi import UploadFile, File
-import shutil
+
 from faster_whisper import WhisperModel
 
+import shutil
+
+from app.intent_parser import parse_intent
+from app.process_query import process_query
+
+# =========================
+# NEW IMPORT
+# Response formatter converts
+# raw database tuples into
+# human-friendly responses
+# =========================
+from app.response_formatter import format_response
+
+
+# =========================
+# FASTAPI APP
+# =========================
+
 app = FastAPI()
-print("Loading Whisper model...")
 
-whisper_model = WhisperModel(
-    "base",
-    compute_type="int8"
-)
 
-print("Whisper Loaded")
-class QueryRequest(BaseModel):
-    query: str
-    
+# =========================
 # CORS
+# Allows frontend to connect
+# =========================
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -28,19 +38,47 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+# =========================
+# LOAD WHISPER MODEL
+# Speech-to-text model
+# =========================
+
+print("Loading Whisper model...")
+
+whisper_model = WhisperModel(
+    "base",
+    compute_type="int8"
+)
+
+print("Whisper model loaded successfully.")
+
+
+# =========================
 # REQUEST MODEL
+# Used for text API requests
+# =========================
+
 class QueryRequest(BaseModel):
     query: str
 
+
+# =========================
 # HOME ROUTE
+# =========================
+
 @app.get("/")
 def home():
 
     return {
-        "message": "Backend Running"
+        "message": "FinVoice AI Backend Running"
     }
 
-# BALANCE ROUTE
+
+# =========================
+# MOCK BALANCE ROUTE
+# =========================
+
 @app.get("/balance/{name}")
 def get_balance(name: str):
 
@@ -49,65 +87,163 @@ def get_balance(name: str):
         "balance": 247830
     }
 
-# AI QUERY ROUTE
+
+# =========================
+# TEXT AI ROUTE
+# =========================
+
 @app.post("/ask")
 def ask_ai(data: QueryRequest):
 
-    user_query = data.query
+    try:
 
-    print("\nUSER QUERY:", user_query)
+        user_query = data.query
 
-    # STEP 1 → INTENT PARSING
-    intent = parse_intent(user_query)
+        print("\nUSER QUERY:")
+        print(user_query)
 
-    print("\nINTENT:", intent)
+        # =========================
+        # STEP 1 → INTENT PARSING
+        # Converts user query into JSON intent
+        # =========================
 
-    # STEP 2 → QUERY PROCESSING
-    result = process_query(intent)
+        intent_data = parse_intent(user_query)
 
-    print("\nRESULT:", result)
+        print("\nINTENT:")
+        print(intent_data)
 
-    return {
-        "response": str(result)
-    }
+        # =========================
+        # STEP 2 → DATABASE PROCESSING
+        # Fetch raw database result
+        # =========================
+
+        result = process_query(intent_data)
+
+        print("\nRAW DATABASE RESULT:")
+        print(result)
+
+        # =========================
+        # STEP 3 → RESPONSE FORMATTING
+        # Converts ugly DB tuples into
+        # clean human-readable response
+        # =========================
+
+        formatted_response = format_response(
+            intent_data,
+            result
+        )
+
+        print("\nFORMATTED RESPONSE:")
+        print(formatted_response)
+
+        # =========================
+        # FINAL API RESPONSE
+        # =========================
+
+        return {
+            "success": True,
+            "query": user_query,
+            "intent": intent_data,
+            "response": formatted_response
+        }
+
+    except Exception as e:
+
+        print("\nERROR:")
+        print(str(e))
+
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+# =========================
+# VOICE AI ROUTE
+# =========================
 
 @app.post("/voice")
 async def voice_ai(file: UploadFile = File(...)):
 
-    # SAVE AUDIO
-    audio_path = "temp_audio.webm"
+    try:
 
-    with open(audio_path, "wb") as buffer:
+        # =========================
+        # SAVE AUDIO FILE
+        # =========================
 
-        shutil.copyfileobj(file.file, buffer)
+        audio_path = "temp_audio.webm"
 
-    print("\nAudio Received")
+        with open(audio_path, "wb") as buffer:
 
-    # TRANSCRIBE
-    segments, info = whisper_model.transcribe(audio_path)
+            shutil.copyfileobj(file.file, buffer)
 
-    transcript = ""
+        print("\nAudio received successfully.")
 
-    for segment in segments:
+        # =========================
+        # TRANSCRIBE AUDIO
+        # Speech → Text
+        # =========================
 
-        transcript += segment.text
+        segments, info = whisper_model.transcribe(audio_path)
 
-    print("\nTRANSCRIPT:")
-    print(transcript)
+        transcript = ""
 
-    # AI INTENT
-    intent = parse_intent(transcript)
+        for segment in segments:
 
-    print("\nINTENT:")
-    print(intent)
+            transcript += segment.text + " "
 
-    # DATABASE QUERY
-    result = process_query(intent)
+        transcript = transcript.strip()
 
-    print("\nRESULT:")
-    print(result)
+        print("\nTRANSCRIPT:")
+        print(transcript)
 
-    return {
-        "transcript": transcript,
-        "response": str(result)
-    }
+        # =========================
+        # STEP 1 → INTENT PARSING
+        # =========================
+
+        intent_data = parse_intent(transcript)
+
+        print("\nINTENT:")
+        print(intent_data)
+
+        # =========================
+        # STEP 2 → DATABASE PROCESSING
+        # =========================
+
+        result = process_query(intent_data)
+
+        print("\nRAW DATABASE RESULT:")
+        print(result)
+
+        # =========================
+        # STEP 3 → RESPONSE FORMATTING
+        # =========================
+
+        formatted_response = format_response(
+            intent_data,
+            result
+        )
+
+        print("\nFORMATTED RESPONSE:")
+        print(formatted_response)
+
+        # =========================
+        # FINAL API RESPONSE
+        # =========================
+
+        return {
+            "success": True,
+            "transcript": transcript,
+            "intent": intent_data,
+            "response": formatted_response
+        }
+
+    except Exception as e:
+
+        print("\nVOICE ROUTE ERROR:")
+        print(str(e))
+
+        return {
+            "success": False,
+            "error": str(e)
+        }

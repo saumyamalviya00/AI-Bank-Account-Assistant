@@ -1,44 +1,249 @@
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
-from app.voice import record_audio, speech_to_text
+from faster_whisper import WhisperModel
+
+import shutil
+
 from app.intent_parser import parse_intent
 from app.process_query import process_query
-from app.tts import speak
-import json
 
-while True:
+# =========================
+# NEW IMPORT
+# Response formatter converts
+# raw database tuples into
+# human-friendly responses
+# =========================
+from app.response_formatter import format_response
 
-    print("\nSpeak your banking query...")
 
-    record_audio()
+# =========================
+# FASTAPI APP
+# =========================
 
-    text = speech_to_text()
+app = FastAPI()
 
-    print("\nUser Said:")
-    print(text)
 
-    if "exit" in text.lower():
-        speak("Goodbye")
-        break
+# =========================
+# CORS
+# Allows frontend to connect
+# =========================
 
-    intent_raw = parse_intent(text)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-    intent_raw = intent_raw.replace("```json", "")
-    intent_raw = intent_raw.replace("```", "")
-    intent_raw = intent_raw.strip()
 
-    print("\nIntent:")
-    print(intent_raw)
+# =========================
+# LOAD WHISPER MODEL
+# Speech-to-text model
+# =========================
+
+print("Loading Whisper model...")
+
+whisper_model = WhisperModel(
+    "base",
+    compute_type="int8"
+)
+
+print("Whisper model loaded successfully.")
+
+
+# =========================
+# REQUEST MODEL
+# Used for text API requests
+# =========================
+
+class QueryRequest(BaseModel):
+    query: str
+
+
+# =========================
+# HOME ROUTE
+# =========================
+
+@app.get("/")
+def home():
+
+    return {
+        "message": "FinVoice AI Backend Running"
+    }
+
+
+# =========================
+# MOCK BALANCE ROUTE
+# =========================
+
+@app.get("/balance/{name}")
+def get_balance(name: str):
+
+    return {
+        "name": name,
+        "balance": 247830
+    }
+
+
+# =========================
+# TEXT AI ROUTE
+# =========================
+
+@app.post("/ask")
+def ask_ai(data: QueryRequest):
 
     try:
-        intent_json = json.loads(intent_raw)
 
-    except:
-        speak("Could not understand intent")
-        continue
+        user_query = data.query
 
-    result = process_query(intent_json)
+        print("\nUSER QUERY:")
+        print(user_query)
 
-    print("\nDatabase Result:")
-    print(result)
+        # =========================
+        # STEP 1 → INTENT PARSING
+        # Converts user query into JSON intent
+        # =========================
 
-    speak(result)
+        intent_data = parse_intent(user_query)
+
+        print("\nINTENT:")
+        print(intent_data)
+
+        # =========================
+        # STEP 2 → DATABASE PROCESSING
+        # Fetch raw database result
+        # =========================
+
+        result = process_query(intent_data)
+
+        print("\nRAW DATABASE RESULT:")
+        print(result)
+
+        # =========================
+        # STEP 3 → RESPONSE FORMATTING
+        # Converts ugly DB tuples into
+        # clean human-readable response
+        # =========================
+
+        formatted_response = format_response(
+            intent_data,
+            result
+        )
+
+        print("\nFORMATTED RESPONSE:")
+        print(formatted_response)
+
+        # =========================
+        # FINAL API RESPONSE
+        # =========================
+
+        return {
+            "success": True,
+            "query": user_query,
+            "intent": intent_data,
+            "response": formatted_response
+        }
+
+    except Exception as e:
+
+        print("\nERROR:")
+        print(str(e))
+
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+
+# =========================
+# VOICE AI ROUTE
+# =========================
+
+@app.post("/voice")
+async def voice_ai(file: UploadFile = File(...)):
+
+    try:
+
+        # =========================
+        # SAVE AUDIO FILE
+        # =========================
+
+        audio_path = "temp_audio.webm"
+
+        with open(audio_path, "wb") as buffer:
+
+            shutil.copyfileobj(file.file, buffer)
+
+        print("\nAudio received successfully.")
+
+        # =========================
+        # TRANSCRIBE AUDIO
+        # Speech → Text
+        # =========================
+
+        segments, info = whisper_model.transcribe(audio_path)
+
+        transcript = ""
+
+        for segment in segments:
+
+            transcript += segment.text + " "
+
+        transcript = transcript.strip()
+
+        print("\nTRANSCRIPT:")
+        print(transcript)
+
+        # =========================
+        # STEP 1 → INTENT PARSING
+        # =========================
+
+        intent_data = parse_intent(transcript)
+
+        print("\nINTENT:")
+        print(intent_data)
+
+        # =========================
+        # STEP 2 → DATABASE PROCESSING
+        # =========================
+
+        result = process_query(intent_data)
+
+        print("\nRAW DATABASE RESULT:")
+        print(result)
+
+        # =========================
+        # STEP 3 → RESPONSE FORMATTING
+        # =========================
+
+        formatted_response = format_response(
+            intent_data,
+            result
+        )
+
+        print("\nFORMATTED RESPONSE:")
+        print(formatted_response)
+
+        # =========================
+        # FINAL API RESPONSE
+        # =========================
+
+        return {
+            "success": True,
+            "transcript": transcript,
+            "intent": intent_data,
+            "response": formatted_response
+        }
+
+    except Exception as e:
+
+        print("\nVOICE ROUTE ERROR:")
+        print(str(e))
+
+        return {
+            "success": False,
+            "error": str(e)
+        }

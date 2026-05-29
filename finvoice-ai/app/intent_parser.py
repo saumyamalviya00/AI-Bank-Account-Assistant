@@ -1,38 +1,58 @@
-from langchain_community.llms import Ollama
+from groq import Groq
+from dotenv import load_dotenv
+import os
+import json
 
-llm = Ollama(model="qwen2.5:0.5b")
+load_dotenv()
+
+client = Groq(
+    api_key=os.getenv("GROQ_API_KEY")
+)
 
 def parse_intent(user_query):
 
     prompt = f"""
-    Extract banking intent from this query.
+You are a banking intent classifier.
 
-    Return ONLY valid JSON.
+Return ONLY valid JSON.
 
-    Query:
-    {user_query}
+Do NOT explain.
+Do NOT add markdown.
+Do NOT add extra text.
 
-    Examples:
+Examples:
 
-    Query: What is my balance?
-    {{
-      "intent":"balance_check"
-    }}
+Query: What is my balance?
+Response:
+{{"intent":"show_balance"}}
 
-    Query: Show my last 5 transactions
-    {{
-      "intent":"transaction_history",
-      "limit":5
-    }}
+Query: Show last 5 transactions
+Response:
+{{"intent":"last_transactions"}}
 
-    Query: How much money did I send Rahul?
-    {{
-      "intent":"money_sent",
-      "receiver":"Rahul"
-    }}
-    """
+Query: How much did I spend this month?
+Response:
+{{"intent":"monthly_spending"}}
 
-    response = llm.invoke(prompt)
+Now classify this query:
 
-    return response
+Query:
+{user_query}
+"""
 
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+
+        messages=[
+            {
+                "role": "user",
+                "content": prompt
+            }
+        ],
+
+        temperature=0
+    )
+
+    content = response.choices[0].message.content
+
+    return json.loads(content)

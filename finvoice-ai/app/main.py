@@ -1,249 +1,249 @@
-from fastapi import FastAPI, UploadFile, File
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+  # from fastapi import FastAPI, UploadFile, File
+# from fastapi.middleware.cors import CORSMiddleware
+# from pydantic import BaseModel
 
-from faster_whisper import WhisperModel
+# from faster_whisper import WhisperModel
 
-import shutil
+# import shutil
 
-from app.intent_parser import parse_intent
-from app.process_query import process_query
+# from app.intent_parser import parse_intent
+# from app.process_query import process_query
 
-# =========================
-# NEW IMPORT
-# Response formatter converts
-# raw database tuples into
-# human-friendly responses
-# =========================
-from app.response_formatter import format_response
+# # =========================
+# # NEW IMPORT
+# # Response formatter converts
+# # raw database tuples into
+# # human-friendly responses
+# # =========================
+# from app.response_formatter import format_response
 
 
-# =========================
-# FASTAPI APP
-# =========================
+# # =========================
+# # FASTAPI APP
+# # =========================
 
-app = FastAPI()
+# app = FastAPI()
 
 
-# =========================
-# CORS
-# Allows frontend to connect
-# =========================
+# # =========================
+# # CORS
+# # Allows frontend to connect
+# # =========================
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# app.add_middleware(
+#     CORSMiddleware,
+#     allow_origins=["*"],
+#     allow_credentials=True,
+#     allow_methods=["*"],
+#     allow_headers=["*"],
+# )
 
 
-# =========================
-# LOAD WHISPER MODEL
-# Speech-to-text model
-# =========================
+# # =========================
+# # LOAD WHISPER MODEL
+# # Speech-to-text model
+# # =========================
 
-print("Loading Whisper model...")
+# print("Loading Whisper model...")
 
-whisper_model = WhisperModel(
-    "base",
-    compute_type="int8"
-)
+# whisper_model = WhisperModel(
+#     "base",
+#     compute_type="int8"
+# )
 
-print("Whisper model loaded successfully.")
+# print("Whisper model loaded successfully.")
 
 
-# =========================
-# REQUEST MODEL
-# Used for text API requests
-# =========================
+# # =========================
+# # REQUEST MODEL
+# # Used for text API requests
+# # =========================
 
-class QueryRequest(BaseModel):
-    query: str
+# class QueryRequest(BaseModel):
+#     query: str
 
 
-# =========================
-# HOME ROUTE
-# =========================
+# # =========================
+# # HOME ROUTE
+# # =========================
 
-@app.get("/")
-def home():
+# @app.get("/")
+# def home():
 
-    return {
-        "message": "FinVoice AI Backend Running"
-    }
+#     return {
+#         "message": "FinVoice AI Backend Running"
+#     }
 
 
-# =========================
-# MOCK BALANCE ROUTE
-# =========================
+# # =========================
+# # MOCK BALANCE ROUTE
+# # =========================
 
-@app.get("/balance/{name}")
-def get_balance(name: str):
+# @app.get("/balance/{name}")
+# def get_balance(name: str):
 
-    return {
-        "name": name,
-        "balance": 247830
-    }
+#     return {
+#         "name": name,
+#         "balance": 247830
+#     }
 
 
-# =========================
-# TEXT AI ROUTE
-# =========================
+# # =========================
+# # TEXT AI ROUTE
+# # =========================
 
-@app.post("/ask")
-def ask_ai(data: QueryRequest):
+# @app.post("/ask")
+# def ask_ai(data: QueryRequest):
 
-    try:
+#     try:
 
-        user_query = data.query
+#         user_query = data.query
 
-        print("\nUSER QUERY:")
-        print(user_query)
+#         print("\nUSER QUERY:")
+#         print(user_query)
 
-        # =========================
-        # STEP 1 → INTENT PARSING
-        # Converts user query into JSON intent
-        # =========================
+#         # =========================
+#         # STEP 1 → INTENT PARSING
+#         # Converts user query into JSON intent
+#         # =========================
 
-        intent_data = parse_intent(user_query)
+#         intent_data = parse_intent(user_query)
 
-        print("\nINTENT:")
-        print(intent_data)
+#         print("\nINTENT1:")
+#         print(intent_data)
 
-        # =========================
-        # STEP 2 → DATABASE PROCESSING
-        # Fetch raw database result
-        # =========================
+#         # =========================
+#         # STEP 2 → DATABASE PROCESSING
+#         # Fetch raw database result
+#         # =========================
 
-        result = process_query(intent_data)
+#         result = process_query(intent_data)
 
-        print("\nRAW DATABASE RESULT:")
-        print(result)
+#         print("\nRAW DATABASE RESULT:")
+#         print(result)
 
-        # =========================
-        # STEP 3 → RESPONSE FORMATTING
-        # Converts ugly DB tuples into
-        # clean human-readable response
-        # =========================
+#         # =========================
+#         # STEP 3 → RESPONSE FORMATTING
+#         # Converts ugly DB tuples into
+#         # clean human-readable response
+#         # =========================
 
-        formatted_response = format_response(
-            intent_data,
-            result
-        )
+#         formatted_response = format_response(
+#             intent_data,
+#             result
+#         )
 
-        print("\nFORMATTED RESPONSE:")
-        print(formatted_response)
+#         print("\nFORMATTED RESPONSE:")
+#         print(formatted_response)
 
-        # =========================
-        # FINAL API RESPONSE
-        # =========================
+#         # =========================
+#         # FINAL API RESPONSE
+#         # =========================
 
-        return {
-            "success": True,
-            "query": user_query,
-            "intent": intent_data,
-            "response": formatted_response
-        }
+#         return {
+#             "success": True,
+#             "query": user_query,
+#             "intent": intent_data,
+#             "response": formatted_response
+#         }
 
-    except Exception as e:
+#     except Exception as e:
 
-        print("\nERROR:")
-        print(str(e))
+#         print("\nERROR:")
+#         print(str(e))
 
-        return {
-            "success": False,
-            "error": str(e)
-        }
+#         return {
+#             "success": False,
+#             "error": str(e)
+#         }
 
 
-# =========================
-# VOICE AI ROUTE
-# =========================
+# # =========================
+# # VOICE AI ROUTE
+# # =========================
 
-@app.post("/voice")
-async def voice_ai(file: UploadFile = File(...)):
+# @app.post("/voice")
+# async def voice_ai(file: UploadFile = File(...)):
 
-    try:
+#     try:
 
-        # =========================
-        # SAVE AUDIO FILE
-        # =========================
+#         # =========================
+#         # SAVE AUDIO FILE
+#         # =========================
 
-        audio_path = "temp_audio.webm"
+#         audio_path = "temp_audio.webm"
 
-        with open(audio_path, "wb") as buffer:
+#         with open(audio_path, "wb") as buffer:
 
-            shutil.copyfileobj(file.file, buffer)
+#             shutil.copyfileobj(file.file, buffer)
 
-        print("\nAudio received successfully.")
+#         print("\nAudio received successfully.")
 
-        # =========================
-        # TRANSCRIBE AUDIO
-        # Speech → Text
-        # =========================
+#         # =========================
+#         # TRANSCRIBE AUDIO
+#         # Speech → Text
+#         # =========================
 
-        segments, info = whisper_model.transcribe(audio_path)
+#         segments, info = whisper_model.transcribe(audio_path)
 
-        transcript = ""
+#         transcript = ""
 
-        for segment in segments:
+#         for segment in segments:
 
-            transcript += segment.text + " "
+#             transcript += segment.text + " "
 
-        transcript = transcript.strip()
+#         transcript = transcript.strip()
 
-        print("\nTRANSCRIPT:")
-        print(transcript)
+#         print("\nTRANSCRIPT:")
+#         print(transcript)
 
-        # =========================
-        # STEP 1 → INTENT PARSING
-        # =========================
+#         # =========================
+#         # STEP 1 → INTENT PARSING
+#         # =========================
 
-        intent_data = parse_intent(transcript)
+#         intent_data = parse_intent(transcript)
 
-        print("\nINTENT:")
-        print(intent_data)
+#         print("\nINTENT:")
+#         print(intent_data)
 
-        # =========================
-        # STEP 2 → DATABASE PROCESSING
-        # =========================
+#         # =========================
+#         # STEP 2 → DATABASE PROCESSING
+#         # =========================
 
-        result = process_query(intent_data)
+#         result = process_query(intent_data)
 
-        print("\nRAW DATABASE RESULT:")
-        print(result)
+#         print("\nRAW DATABASE RESULT:")
+#         print(result)
 
-        # =========================
-        # STEP 3 → RESPONSE FORMATTING
-        # =========================
+#         # =========================
+#         # STEP 3 → RESPONSE FORMATTING
+#         # =========================
 
-        formatted_response = format_response(
-            intent_data,
-            result
-        )
+#         formatted_response = format_response(
+#             intent_data,
+#             result
+#         )
 
-        print("\nFORMATTED RESPONSE:")
-        print(formatted_response)
+#         print("\nFORMATTED RESPONSE:")
+#         print(formatted_response)
 
-        # =========================
-        # FINAL API RESPONSE
-        # =========================
+#         # =========================
+#         # FINAL API RESPONSE
+#         # =========================
 
-        return {
-            "success": True,
-            "transcript": transcript,
-            "intent": intent_data,
-            "response": formatted_response
-        }
+#         return {
+#             "success": True,
+#             "transcript": transcript,
+#             "intent": intent_data,
+#             "response": formatted_response
+#         }
 
-    except Exception as e:
+#     except Exception as e:
 
-        print("\nVOICE ROUTE ERROR:")
-        print(str(e))
+#         print("\nVOICE ROUTE ERROR:")
+#         print(str(e))
 
-        return {
-            "success": False,
-            "error": str(e)
-        }
+#         return {
+#             "success": False,
+#             "error": str(e)
+#         }

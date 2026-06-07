@@ -282,6 +282,21 @@ VALUES
 ('Rahul','Saumya',2000,'received',NOW());
 ```
 
+If you want to seed the database from the backend workspace instead of pasting SQL manually, run:
+
+```bash
+cd finvoice-ai
+export DATABASE_URL="postgresql://debabrata@localhost/bank_ai"
+python seed_dummy_data.py
+```
+
+Verify the inserted rows with:
+
+```bash
+psql -d bank_ai -c "SELECT * FROM users;"
+psql -d bank_ai -c "SELECT * FROM transactions;"
+```
+
 ---
 
 # 🖥️ Backend Setup

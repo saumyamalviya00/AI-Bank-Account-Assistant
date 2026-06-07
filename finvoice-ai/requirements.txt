@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+faster-whisper
+groq
+sqlalchemy
+psycopg2-binary
+python-dotenv
+python-multipart
+python-dateutil
+sounddevice
+scipy
+numpy
